@@ -35,45 +35,50 @@ def lightUpToken():
 
     if os.path.exists('access_refresh.json'):
         with open('access_refresh.json') as json_file:
-            access_refresh = json.load(json_file)
+            accessRefresh = json.load(json_file)
     else:
         raise Exception('File missing: access_refresh.json')
 
     # access token still valid?
-    if access_refresh['expires_at'] < time.time():
+    if accessRefresh['expires_at'] < time.time():
+        # token expired
         print('Fetching a new token ...')
-        # retrieve new access_token with refresh_token
-        url = 'https://www.strava.com/oauth/token?client_id={}&client_secret={}&grant_type=refresh_token&refresh_token={}'.format(client_data['id'], client_data['secret'], access_refresh['refresh_token'])
+        # retrieve new accessToken with refresh_token
+        url = 'https://www.strava.com/oauth/token?client_id={}&client_secret={}&grant_type=refresh_token&refresh_token={}'.format(client_data['id'], client_data['secret'], accessRefresh['refresh_token'])
         response = requests.post(url)
         if response.status_code == 200:
-            access_refresh = response.json()
+            accessRefresh = response.json()
             # store new tokens
             with open('access_refresh.json', 'w') as json_file:
-                json.dump(response.json(), json_file)
+                json.dump(accessRefresh, json_file)
             print('ok\n')
         else:
             raise Exception('Can not refresh token')
     else:
+        # token still valid
         print('Token is still hot!!\n')
 
-    return access_refresh
+    return accessRefresh
 
 
-def getActivitiesFromStrava(token):
+def getActivitiesFromStrava(accessToken):
+    # get list of all activities of athlet from strava 
+
+    # create an empyt list to store the activities
+    activityDataFrameList = []
 
     # thanks Benji
     # https://medium.com/swlh/using-python-to-connect-to-stravas-api-and-analyse-your-activities-dummies-guide-5f49727aac86
     page = 1
     url = "https://www.strava.com/api/v3/activities"
-    # access_token = access_refresh['access_token']  # we get the token with function call
-    # create an empyt list to store the activities
-    activityDataFrameList = []
+
+
     # get 'em
     while True:
         # get page of activities from Strava
         resp = requests.get(url
                             + '?access_token='
-                            + token
+                            + accessToken
                             + '&per_page=200'
                             + '&page='
                             + str(page))
@@ -117,11 +122,11 @@ def createSegmentMarker(latlng, pop='some default text', tool='segment default n
     markerStyle = ['bicycle', 'blue', '#FFFFFF']
     
     # popup
-    iframe = folium.IFrame(pop,  # html style text .. next step: change font!!
+    iframe = folium.IFrame(pop,  # create an iframe with html text
                            width=200,
                            height=200
                            )
-    fpop = folium.Popup(iframe)
+    fpop = folium.Popup(iframe)  # put iFrame in a popup
     
     # create the marker
     if antsRunning:
@@ -147,23 +152,25 @@ def createSegmentMarker(latlng, pop='some default text', tool='segment default n
     return mrk
 
 
-def time2seconds(tstr):
-    if type(tstr) == pd._libs.tslibs.timedeltas.Timedelta:
-        return tstr.seconds
-    if type(tstr) == datetime.timedelta:
-        return tstr.seconds
-    elif type(tstr) == str:
-        if tstr == 'nan':
+def timeStringToSeconds(timeString):
+    # convert a string representing a time to seconds
+
+    if type(timeString) == pd._libs.tslibs.timedeltas.Timedelta:
+        return timeString.seconds
+    if type(timeString) == datetime.timedelta:
+        return timeString.seconds
+    elif type(timeString) == str:
+        if timeString == 'nan':
             return np.inf
         else:
             sec = sum(x * int(t)
-                      for x, t in zip([1, 60, 3600], reversed(tstr.split(":"))))
-        return sec
-    elif type(tstr) == float or type(tstr) == int:
-        if np.isnan(tstr):
+                      for x, t in zip([1, 60, 3600], reversed(timeString.split(":"))))
+            return sec
+    elif type(timeString) == float or type(timeString) == int:
+        if np.isnan(timeString):
             return np.inf
         else:
-            return tstr
+            return timeString
 
 
 def secondsToTimeString(secs):
@@ -183,11 +190,11 @@ def secondsToTimeString(secs):
 
 # %% 
 # check login token and refresh if necessary
-access_refresh = lightUpToken()
-access_token = access_refresh['access_token']
+accessRefresh = lightUpToken()
+accessToken = accessRefresh['access_token']
 
 # get athlete info (logged in athlete)
-athleteUrl = 'https://www.strava.com/api/v3/athlete?access_token='+access_token
+athleteUrl = 'https://www.strava.com/api/v3/athlete?access_token='+accessToken
 resp = requests.get(athleteUrl)
 if resp.status_code == 200:
     athleteData = resp.json()
@@ -200,7 +207,7 @@ else:
 # get strava activitiy data
 
 # get activity list
-dfActivities = getActivitiesFromStrava(access_token)
+dfActivities = getActivitiesFromStrava(accessToken)
 
 # filter activities by ride (=bike)
 dfActivities = dfActivities[dfActivities['type'] == 'Ride']
@@ -217,9 +224,8 @@ else:
     dfEfforts = pd.DataFrame()
     localIds = []
 
-me = dict()
 
-# define streams
+# define streams which are fetched from strava
 streamTypes = ['time',
          'latlng',
          'distance',
@@ -251,7 +257,7 @@ for act in dfActivities.iterrows():
                   + ','.join(streamTypes)
                   + '&key_by_type=true'
                   + '&access_token='
-                  + access_token
+                  + accessToken
                   )
         resp = requests.get(acturl)
         resp = resp.json()
@@ -260,7 +266,7 @@ for act in dfActivities.iterrows():
         
         # catch some errors
         if 'distance' not in singleRide.columns:
-            print('Skip new ride "'+act['name']+'" from',str(act.start_date_local),'!!')
+            print('No distance, skipping new ride "'+act['name']+'" from',str(act.start_date_local),'!!')
             continue
         
         print('Adding new ride "'+act['name']+'" from',str(act.start_date_local),'!!')
@@ -269,7 +275,7 @@ for act in dfActivities.iterrows():
         singleRide.velocity_smooth = singleRide.velocity_smooth*3.6  # m/s --> km/h
         singleRide.distance = singleRide.distance/1000  # m --> km
         
-        # add more infos
+        # add specific activity data to dataframe
         singleRide['id'] = act.id
         singleRide['name'] = act['name']
         singleRide['date'] = act.start_date_local
@@ -279,64 +285,68 @@ for act in dfActivities.iterrows():
         singleRide['lat'] = latlnglst[0]
         singleRide['lng'] = latlnglst[1]
 
-        # gear ????
+        # get gear name of activity
         gear = requests.get('https://www.strava.com/api/v3/gear/'
                             + act.gear_id
                             + '?access_token='
-                            + access_token
+                            + accessToken
                             )
         gear = gear.json()
         singleRide['gear'] = gear['name']
         
-        # stack new ride to df
+        # stack new ride to rides df
         dfRides = pd.concat([dfRides, singleRide])
 
-        # get activity efforts
-        print('...fetching efforts')
+        # get activity segment efforts
+        print('... fetching segment efforts')
         ''' example
         https://www.strava.com/api/v3/activities/5758953369?include_all_efforts=true"
         '''
-        acteffurl = (url
-                     + '/'
-                     + str(act.id)
-                     + '?include_all_efforts=true'
-                     + '&access_token='
-                     + access_token
-                     )
-        resp = requests.get(acteffurl)
+        actEffortsUrl = (url
+                         + '/'
+                         + str(act.id)
+                         + '?include_all_efforts=true'
+                         + '&access_token='
+                         + accessToken
+                         )
+        resp = requests.get(actEffortsUrl)
         resp = resp.json()
-
+        
+        myEfforts = dict()
         for each in resp['segment_efforts']:
-            # create dict for every effort
-            sid = each['id']
-            me[sid] = {}
-            me[sid].update(each['segment'])
-            me[sid]['segment_id'] = each['segment']['id']
-            me[sid]['act_id'] = each['activity']['id']
-            me[sid]['athlete_name'] = athleteName
-            me[sid]['elapsed_time'] = time2seconds(each['elapsed_time'])
-            me[sid]['moving_time'] = time2seconds(each['moving_time'])
-            me[sid]['rank'] = 0
-            me[sid]['start_date'] = each['start_date'] # TODO
-            me[sid]['start_date_local'] = each['start_date_local']
+            # create a sub-dict for every effort in myEfforts dict
+            segmentId = each['id']
+            myEfforts[segmentId] = {}
+            myEfforts[segmentId].update(each['segment'])
+            myEfforts[segmentId]['segment_id'] = each['segment']['id']
+            myEfforts[segmentId]['act_id'] = each['activity']['id']
+            myEfforts[segmentId]['athlete_name'] = athleteName
+            myEfforts[segmentId]['elapsed_time'] = timeStringToSeconds(each['elapsed_time'])
+            myEfforts[segmentId]['moving_time'] = timeStringToSeconds(each['moving_time'])
+            myEfforts[segmentId]['rank'] = 0
+            myEfforts[segmentId]['start_date'] = each['start_date'] # TODO
+            myEfforts[segmentId]['start_date_local'] = each['start_date_local']
 
 
-# store up-to-date data
+# store up-to-date rides data
 dfRides.to_pickle('BikeBeaconRidesData.pickle')
 
-if me:
-    df_me_new = pd.DataFrame(index=me.keys(), data=me.values())
-    df_me_new['start_date'] = pd.to_datetime(df_me_new.start_date, utc=True)
-    df_me_new['start_date_local'] = pd.to_datetime(df_me_new.start_date_local, utc=True)
-    dfEfforts = pd.concat([dfEfforts, df_me_new])
-dfEfforts.sort_values('elapsed_time', inplace=True)  
+# add new segment data if available
+if 'myEfforts' in globals():
+    # convert dict data in myEfforts to dataframe
+    newEffortsDataframe = pd.DataFrame(index=myEfforts.keys(), data=myEfforts.values())
+    # convert time columns in dataframe
+    newEffortsDataframe['start_date'] = pd.to_datetime(newEffortsDataframe.start_date, utc=True)
+    newEffortsDataframe['start_date_local'] = pd.to_datetime(newEffortsDataframe.start_date_local, utc=True)
+    # stack new efforts to existing dataframe
+    dfEfforts = pd.concat([dfEfforts, newEffortsDataframe])
 
 
 # Theoretically here we have the same data whether started fresh or from local data
 # As getting data is rate limited, we probably can not get all data at once at fresh start
 
 
-# get stream data if missing from former run
+# get stream data if missing from former run (e.g. as of rate limit drops)
 mask = dfEfforts['stream_latlng'].isna()
 missing_seg_geodata_id = dfEfforts.loc[mask, 'id'].unique()
 
@@ -352,7 +362,7 @@ for ctr, sid in enumerate(missing_seg_geodata_id):
                     + str(int(sid))
                     + '/streams?keys=latlng&key_by_type=true'
                     + '&access_token='
-                    + access_token
+                    + accessToken
                     )
     resp = requests.get(segstreamurl)
     resp = resp.json()
@@ -373,7 +383,8 @@ for ctr, sid in enumerate(missing_seg_geodata_id):
         # write segment geo data to df @ matching segment id
         dfEfforts.loc[matchid,'stream_latlng'] = dfEfforts.apply(lambda x: stream_latlng, axis=1)
 
-# store up-to-date data
+# store up-to-date efforts data
+dfEfforts.sort_values('elapsed_time', inplace=True)
 dfEfforts.to_pickle('BikeBeaconEffortsData.pickle')    
 
 
@@ -386,9 +397,9 @@ antPathActive = True
 
 
 # define map with styles
-geo_start = [52.5172, 13.3024]
+geoStart = [52.5172, 13.3024]
 beaconMap = folium.Map(
-    location=geo_start,
+    location=geoStart,
     zoom_start=7,
     # tiles='OpenStreetMap'
     # tiles='CartoDB dark_matter'
@@ -396,32 +407,29 @@ beaconMap = folium.Map(
     tiles=None
     )
 
-mapstyle_0 = folium.raster_layers.TileLayer(
+folium.raster_layers.TileLayer(
     tiles='CartoDB positron',
     name='light',
     overlay=False,
     control=True,
     show=True,  # as this is true this is activated when map is opened
-    )
-mapstyle_0.add_to(beaconMap)
+    ).add_to(beaconMap)
 
-mapstyle_1 = folium.raster_layers.TileLayer(
+folium.raster_layers.TileLayer(
     tiles='CartoDB dark_matter',
     name='dark',
     overlay=False,
     control=True,
     show=False,
-    )
-mapstyle_1.add_to(beaconMap)
+    ).add_to(beaconMap)
 
-mapstyle_2 = folium.raster_layers.TileLayer(
+folium.raster_layers.TileLayer(
     tiles='OpenStreetMap',
     name='OpenStreetMap',
     overlay=False,
     control=True,
     show=False,
-    )
-mapstyle_2.add_to(beaconMap)
+    ).add_to(beaconMap)
 
 
 # add full screen button
@@ -448,36 +456,36 @@ if antPathActive:
 ## add the layercontrol in the map
 
 # heatmap entry in layercontrol
-cl0 = folium.FeatureGroup(name='Heatmap!')
-cl0.add_to(beaconMap)
+featureGroupHeatmap = folium.FeatureGroup(name='Heatmap!')
+featureGroupHeatmap.add_to(beaconMap)
 
 
 # markergroups in layercontrol
-mc = folium.plugins.MarkerCluster(
+segmentMarkerCluster = folium.plugins.MarkerCluster(
     name='Segment Markers',
     overlay=True,
     control=True,
-    show=True,
+    show=True,  # When changing this control box later you will show/hide all markers in subgroups of this!
     # disableClusteringAtZoom=10
     )
-mc.add_to(beaconMap)
+segmentMarkerCluster.add_to(beaconMap)
+
+# sub groups for the marker cluster
+segmentMarkerSubGroup1 = folium.plugins.FeatureGroupSubGroup(
+    segmentMarkerCluster,  # this is the parent MarkerCluster
+    name='segmentMarkerCluster sub1',
+    show=True,  # True - activated at start
+    control=False)  # True - show in controls (this is False as it is the only one atm.)
+segmentMarkerSubGroup1.add_to(beaconMap)
+# segmentMarkerSubGroup2 = folium.plugins.FeatureGroupSubGroup(segmentMarkerCluster, name='segmentMarkerCluster sub2')
+# segmentMarkerSubGroup2.add_to(beaconMap)
+# segmentMarkerSubGroup3 = folium.plugins.FeatureGroupSubGroup(segmentMarkerCluster, name='segmentMarkerCluster sub3')
+# segmentMarkerSubGroup3.add_to(beaconMap)
 
 
-# cl1 = folium.plugins.FeatureGroupSubGroup(mc, name='Segment Rank 1-10')
-# cl1.add_to(beaconMap)
-# cl2 = folium.plugins.FeatureGroupSubGroup(mc, name='Segment Rank 11-100')
-# cl2.add_to(beaconMap)
-cl3 = folium.plugins.FeatureGroupSubGroup(
-    mc,
-    name='- Segment Markers sub1',
-    #show=True,
-    control=False)  # False --> deactivated on start
-cl3.add_to(beaconMap)
-
-
-# the layercontrol itself
-lc = folium.map.LayerControl(collapsed=False)
-lc.add_to(beaconMap)
+# now, add the layercontrol itself
+# all items added to beaconMap will be shown in the layercontrol
+folium.map.LayerControl(collapsed=False).add_to(beaconMap)
 
 
 if antPathActive:
@@ -516,7 +524,8 @@ if antPathActive:
     html.script.add_child(e)
 
 
-### add geo marker of each strava segment to the FeatureGroupSubGroup
+# add geo marker of each strava segment to the segmentMarkerSubGroup
+# if there are conditions for different segmentMarkerSubGroup1/2/3/.. use them here to separate markers in diff. groups
 for segmentId, segmentData in dfEfforts.groupby('segment_id'):
 
     # get segment name like it is called @ strava
@@ -551,7 +560,7 @@ for segmentId, segmentData in dfEfforts.groupby('segment_id'):
     
     # create marker and add to map
     mrk = createSegmentMarker(segmentGeoStart, markerPopupText, segmentLabel, antPathActive, antPathGeo)
-    mrk.add_to(cl3)
+    mrk.add_to(segmentMarkerSubGroup1)
 
 
 # Add leaflet antpath plugin cdn link
@@ -572,7 +581,7 @@ HeatMap(
     blur=blu,
     gradient={'0.6': 'red', '0.8': 'yellow', '0.9': 'white'},
     # gradient={.4: “blue”, .6: “cyan”, .7: “lime”, .8: “yellow”, 1: “red”},  # this is the default
-    ).add_to(cl0)
+    ).add_to(featureGroupHeatmap)
 
 print('done')
 

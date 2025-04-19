@@ -17,7 +17,7 @@ import time
 import requests
 import pandas as pd
 import folium
-from folium.plugins import HeatMap
+from folium.plugins import HeatMap, GroupedLayerControl
 from folium.map import Marker, Template
 import numpy as np
 import datetime
@@ -409,7 +409,7 @@ beaconMap = folium.Map(
 
 folium.raster_layers.TileLayer(
     tiles='CartoDB positron',
-    name='light',
+    name='Light map',
     overlay=False,
     control=True,
     show=True,  # as this is true this is activated when map is opened
@@ -417,7 +417,7 @@ folium.raster_layers.TileLayer(
 
 folium.raster_layers.TileLayer(
     tiles='CartoDB dark_matter',
-    name='dark',
+    name='Dark map',
     overlay=False,
     control=True,
     show=False,
@@ -455,10 +455,13 @@ if antPathActive:
 
 ## add the layercontrol in the map
 
-# heatmap entry in layercontrol
-featureGroupHeatmap = folium.FeatureGroup(name='Heatmap!')
-featureGroupHeatmap.add_to(beaconMap)
-
+# heatmap entries in layercontrol
+featureGroupHeatmapDens = folium.FeatureGroup(name='point density')
+featureGroupHeatmapDens.add_to(beaconMap)
+featureGroupHeatmapPoly = folium.FeatureGroup(name='polylines')
+featureGroupHeatmapPoly.add_to(beaconMap)
+featureGroupHeatmapHidden = folium.FeatureGroup(name='hidden')
+featureGroupHeatmapHidden.add_to(beaconMap)
 
 # markergroups in layercontrol
 segmentMarkerCluster = folium.plugins.MarkerCluster(
@@ -486,6 +489,13 @@ segmentMarkerSubGroup1.add_to(beaconMap)
 # now, add the layercontrol itself
 # all items added to beaconMap will be shown in the layercontrol
 folium.map.LayerControl(collapsed=False).add_to(beaconMap)
+
+# this group is added after the layercontrol itself to place it below the global layercontrol
+GroupedLayerControl(
+    groups={'Heatmap Style': [featureGroupHeatmapDens, featureGroupHeatmapPoly, featureGroupHeatmapHidden]},
+    collapsed=False
+).add_to(beaconMap)
+
 
 
 if antPathActive:
@@ -536,7 +546,7 @@ for segmentId, segmentData in dfEfforts.groupby('segment_id'):
 
     # get all times of this segment in nice format
     segmentData['elapsed_time_str'] = segmentData['elapsed_time'].apply(secondsToTimeString)  # time
-    segmentData['start_date_str'] = segmentData['start_date'].str[0:10]  # date
+    segmentData['start_date_str'] = segmentData['start_date'].astype('string').str[0:10]
     
     # combine times and dates to list of time@date strings
     segmentTimesAtDate = [f'{z[0]} ({z[1]})' for z in zip(segmentData['elapsed_time_str'], segmentData['start_date_str'])]
@@ -568,7 +578,7 @@ link = folium.JavascriptLink("https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.
 beaconMap.get_root().html.add_child(link)  
     
 
-#### create HeatMap
+#### create density HeatMap
 rad = 3
 blu = 2.5
 dataLimit = 100000  # max points for heatmap. As these are reduced random & global this should not change coloring
@@ -579,9 +589,22 @@ HeatMap(
     geoData,
     radius=rad,
     blur=blu,
-    gradient={'0.6': 'red', '0.8': 'yellow', '0.9': 'white'},
+    gradient={'0.4': 'red', '0.6': 'yellow', '0.9': 'white'},
     # gradient={.4: “blue”, .6: “cyan”, .7: “lime”, .8: “yellow”, 1: “red”},  # this is the default
-    ).add_to(featureGroupHeatmap)
+    min_opacity=0.3,
+    ).add_to(featureGroupHeatmapDens)
+
+
+#### create polyline heatmap
+for actiId, actiData in dfRides.groupby('id'):
+
+    folium.vector_layers.PolyLine(
+        actiData['latlng'],
+        smooth_factor=2,  # simplify at zooming
+        weight=1.2,  # default 1
+        opacity=0.4,
+        color='red',
+        ).add_to(featureGroupHeatmapPoly)
 
 print('done')
 
@@ -591,3 +614,5 @@ print('done')
 
 beaconMap.save('BikeBeaconMap.html')
 
+
+# %%

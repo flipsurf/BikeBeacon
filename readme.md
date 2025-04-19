@@ -1,12 +1,22 @@
 
 # Bike Beacon Map
-This will grab the athletes rides / activities from strava and generate a map in html format. The map has different styles to select, it contains your global heatmap and a marker for each segment ever ridden with your personal effort listed in a tooltip.  
-This "App" does not have a nice GUI, but is a python script based on pandas and map creation is done via folium. Also, this is far away from ready or even user-friendly. It just works for me and you can use it, or parts, if you want to.
+This will grab the athletes rides / activities from strava and generate a map in html format. The map has different styles to select, it contains your global heatmap in density or polyline style and a marker for each segment ever ridden with your personal efforts listed in a tooltip.  
+To use this script you need an "app", created in *your* strava account to be able to fetch your data.
 
-> Warning: Also this readme is probably not complete and may perhaps skip steps which are not obviously to beginners. To be honest, it is more a list of reminders for myself 🙈😬
 
-## Example output
-![map screenshot](img/BikeBeaconMapDemo.png)
+> Warning: This readme is probably not complete and may perhaps skip steps which are not obviously to beginners. To be honest, it is more a list of reminders for myself 🙈😬
+
+## Output Example
+The generated map has various styles and overlays to select.  
+
+
+<img src="img/sel_streets.png" alt="open street map" width="250">
+<img src="img/sel_dark_lines.png" alt="dark map with polylines" width="250">
+<img src="img/sel_light_dens.png" alt="light map with density heatmap" width="250">
+
+<img src="img/sel_light_marker_dens.png" alt="light map with density heatmap and segment marker" width="758">
+
+There is one known issue: When heatmap style is "polylines" and you click a marker the polylines disappear. I have not yet tried to fix that.
 
 ## Virtual environment
 ```
@@ -52,7 +62,7 @@ https://www.strava.com/oauth/authorize?client_id=12345&redirect_uri=http://local
 
 ## Usage
 run `createBeaconMap.py` and you will get your `BikeBeaconMap.html`
-> If you have lots of rides, you probably will get a rate limit from strava and due to that an error from script. There is no handling for that implemented, as I started with a few activities and now have my data stored local and just fetch some new activities. But, you may store data step by step while debugging. Sorry for that inconvenience but as said ... alpha status
+> If you have lots of rides, you probably will get a rate limit from strava and due to that an error from script. CUrrently there is no handling for that implemented, as I started with a few activities and now have my data stored local and just fetch some new activities. But, you may store data step by step while debugging. Sorry for that inconvenience.
 
 
 #### local data files

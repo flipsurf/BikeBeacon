@@ -4,7 +4,7 @@ This will grab the athletes rides / activities from strava and generate a map in
 To use this script you need an "app", created in *your* strava account to be able to fetch your data.
 
 
-> Warning: This readme is probably not complete and may perhaps skip steps which are not obviously to beginners. To be honest, it is more a list of reminders for myself 🙈😬
+> ⚠️ This readme is probably not complete and may perhaps skip steps which are not obviously to beginners. To be honest, it is more a list of reminders for myself 🙈😬
 
 ## Output Example
 The generated map has various styles and overlays to select.  
@@ -19,6 +19,9 @@ The generated map has various styles and overlays to select.
 
 There is one known issue: When heatmap style is "polylines" and you click a marker the polylines disappear. I have not yet tried to fix that.
 
+
+# Setup
+
 ## Virtual environment
 ```
 py -m venv .venv
@@ -27,11 +30,11 @@ py -m venv .venv
 
 pip install pandas
 pip install requests
-pip install folium
-pip install matplotlib
+pip install folium>=0.19.5
+# pip install matplotlib
 ```
 
-## Setup / first start (register own API access)
+## At first start: register own API access
 This is designed to use an API access from strava, you have to create that in your settings:  
 https://www.strava.com/settings/api  
 * You will get a client id and a client secret, which is necessary to access your data on strava. Copy this id and secret to a file `client.json` with following content:
@@ -59,15 +62,11 @@ https://www.strava.com/oauth/authorize?client_id=12345&redirect_uri=http://local
 
 * You never have to care about all that again, the access token will refresh automatically
 
-
-
 ## Usage
 run `createBeaconMap.py` and you will get your `BikeBeaconMap.html`
-> If you have lots of rides, you probably will get a rate limit from strava and due to that an error from script. CUrrently there is no handling for that implemented, as I started with a few activities and now have my data stored local and just fetch some new activities. But, you may store data step by step while debugging. Sorry for that inconvenience.
+> ⚠️ If you have lots of rides, you probably will get a rate limit from strava and due to that an error from script. Currently there is no handling for that implemented, as I started with a few activities and now have my data stored local and just fetch new activities. But, you may store data step by step while debugging. Sorry for that inconvenience.
 
-
-#### local data files
+### Local data files generated
 BikeBeaconRidesData.pickle  
 BikeBeaconEffortsData.pickle
-
 

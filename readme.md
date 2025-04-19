@@ -9,12 +9,13 @@ To use this script you need an "app", created in *your* strava account to be abl
 ## Output Example
 The generated map has various styles and overlays to select.  
 
-
-<img src="img/sel_streets.png" alt="open street map" width="200">
-<img src="img/sel_dark_lines.png" alt="dark map with polylines" width="200">
-<img src="img/sel_light_dens.png" alt="light map with density heatmap" width="200">
-
-<img src="img/sel_light_marker_dens.png" alt="light map with density heatmap and segment marker">
+<div>
+<img src="img/sel_streets.png" alt="open street map" width="250">
+<img src="img/sel_dark_lines.png" alt="dark map with polylines" width="250">
+<img src="img/sel_light_dens.png" alt="light map with density heatmap" width="250">
+<br>
+<img src="img/sel_light_marker_dens.png" alt="light map with density heatmap and segment marker" width=758>
+</div>
 
 There is one known issue: When heatmap style is "polylines" and you click a marker the polylines disappear. I have not yet tried to fix that.
 

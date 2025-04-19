@@ -9,7 +9,7 @@ To use this script you need an "app", created in *your* strava account to be abl
 ## Output Example
 The generated map has various styles and overlays to select.  
 
-<div>
+<div align="center">
 <img src="img/sel_streets.png" alt="open street map" width="250">
 <img src="img/sel_dark_lines.png" alt="dark map with polylines" width="250">
 <img src="img/sel_light_dens.png" alt="light map with density heatmap" width="250">
